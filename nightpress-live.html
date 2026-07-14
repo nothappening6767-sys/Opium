@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nightpress</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0b0b0d;
+    --green:#1ed760;
+    --text:#f5f5f0;
+    --text-dim:rgba(245,245,240,0.55);
+    --line:rgba(255,255,255,0.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% 0%, rgba(30,215,96,0.10), transparent 60%),
+      radial-gradient(700px 500px at 100% 100%, rgba(30,215,96,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  .app{
+    width:100%;
+    max-width:1000px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border:1px solid var(--line);
+    border-radius:24px;
+    backdrop-filter: blur(20px);
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:260px 1fr;
+    min-height:560px;
+  }
+
+  .sidebar{
+    padding:28px 20px;
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:'Fraunces', serif; font-weight:600; font-size:19px;
+  }
+  .brand .dot{ width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow:0 0 12px rgba(30,215,96,0.6); }
+  .nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{ padding:10px 12px; border-radius:10px; font-size:13px; font-weight:500; color:var(--text-dim); }
+  .nav-item.active{ background:rgba(30,215,96,0.12); color:var(--green); }
+  .user-block{ margin-top:auto; display:flex; align-items:center; gap:10px; }
+  .user-avatar{ width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, var(--green), #0a5a2c); flex-shrink:0; }
+  .user-name{ font-size:12px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .main{ padding:32px 36px; display:flex; flex-direction:column; gap:24px; min-width:0; }
+
+  /* ---- Connect screen ---- */
+  .connect-screen{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:18px; min-height:460px;
+  }
+  .connect-screen h1{ font-family:'Fraunces', serif; font-weight:600; font-size:26px; }
+  .connect-screen p{ color:var(--text-dim); font-size:14px; max-width:340px; line-height:1.5; }
+  .connect-btn{
+    background:var(--green); color:#06170c; border:none;
+    padding:14px 28px; border-radius:30px; font-weight:700; font-size:14px;
+    cursor:pointer; transition:all 0.2s ease;
+  }
+  .connect-btn:hover{ background:#3ee879; transform:scale(1.03); }
+  .status-msg{ font-size:12px; color:var(--text-dim); min-height:16px; }
+  .status-msg.error{ color:#ff6b6b; }
+
+  /* ---- Player screen (hidden until connected) ---- */
+  .player-screen{ display:none; flex-direction:column; gap:24px; }
+  .player-screen.visible{ display:flex; }
+
+  .now-playing{ display:grid; grid-template-columns:180px 1fr; gap:28px; align-items:center; }
+  .art{
+    width:180px; height:180px; border-radius:16px;
+    background:linear-gradient(135deg, #1ed760, #0a3d1f 70%);
+    box-shadow:0 20px 50px -14px rgba(30,215,96,0.35);
+    background-size:cover; background-position:center;
+  }
+  .track-meta{ display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .eyebrow{ font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--green); }
+  .track-title{ font-family:'Fraunces', serif; font-weight:600; font-size:clamp(20px,3vw,30px); line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .track-artist{ font-size:14px; color:var(--text-dim); }
+
+  .progress-section{ display:flex; flex-direction:column; gap:8px; }
+  .bar{ height:4px; background:rgba(255,255,255,0.1); border-radius:4px; position:relative; cursor:pointer; }
+  .bar-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--green); border-radius:4px; }
+  .time-row{ display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); font-variant-numeric:tabular-nums; }
+
+  .transport{ display:flex; align-items:center; justify-content:center; gap:22px; }
+  .ctrl{ background:none; border:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s ease; padding:6px; }
+  .ctrl:hover{ color:var(--text); transform:scale(1.08); }
+  .ctrl svg{ width:18px; height:18px; }
+  .ctrl.play{ width:52px; height:52px; background:var(--green); border-radius:50%; color:#06170c; }
+  .ctrl.play:hover{ background:#3ee879; }
+  .ctrl.play svg{ width:20px; height:20px; }
+
+  .device-note{
+    font-size:11px; color:var(--text-dim); text-align:center;
+    padding:10px; border:1px solid var(--line); border-radius:10px;
+  }
+
+  @media (max-width: 760px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ display:none; }
+    .now-playing{ grid-template-columns:1fr; text-align:center; }
+    .art{ margin:0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand"><span class="dot"></span>Nightpress</div>
+    <div class="nav">
+      <div class="nav-item active">Now Playing</div>
+    </div>
+    <div class="user-block" id="userBlock" style="display:none;">
+      <div class="user-avatar"></div>
+      <div class="user-name" id="userName">—</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="connect-screen" id="connectScreen">
+      <h1>Connect Spotify</h1>
+      <p>Nightpress plays through your real Spotify Premium account. Log in to start streaming.</p>
+      <button class="connect-btn" id="connectBtn">Connect Spotify Premium</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <div class="player-screen" id="playerScreen">
+      <div class="now-playing">
+        <div class="art" id="art"></div>
+        <div class="track-meta">
+          <div class="eyebrow">Now Playing</div>
+          <div class="track-title" id="trackTitle">Nothing playing</div>
+          <div class="track-artist" id="trackArtist">Open Spotify and pick a track</div>
+        </div>
+      </div>
+
+      <div class="progress-section">
+        <div class="bar" id="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="time-row">
+          <span id="curTime">0:00</span>
+          <span id="totalTime">0:00</span>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button class="ctrl" id="prevBtn" aria-label="Previous">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l9-6v12z" transform="scale(-1,1) translate(-24,0)"/></svg>
+        </button>
+        <button class="ctrl play" id="playBtn" aria-label="Play">
+          <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="ctrl" id="nextBtn" aria-label="Next">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-9.5 6l9-6v12z"/></svg>
+        </button>
+      </div>
+
+      <div class="device-note">Playing on: <strong>Nightpress Web Player</strong> — switch to this device in the Spotify app if audio plays elsewhere</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script>
+/* =========================================================
+   CONFIG — this is the only line you should ever need to edit
+   ========================================================= */
+const CLIENT_ID = "f97a2ae7b082478194cc14d0d15c307f";
+const REDIRECT_URI = window.location.origin + window.location.pathname; // must exactly match what you added in the Spotify dashboard
+const SCOPES = [
+  "streaming",
+  "user-read-email",
+  "user-read-private",
+  "user-read-playback-state",
+  "user-modify-playback-state"
+].join(" ");
+
+/* ========= PKCE helpers ========= */
+function generateRandomString(length){
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = '';
+  for (let i=0; i<length; i++) text += possible.charAt(Math.floor(Math.random()*possible.length));
+  return text;
+}
+async function sha256(plain){
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  return await window.crypto.subtle.digest('SHA-256', data);
+}
+function base64UrlEncode(buffer){
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+}
+
+const statusMsg = document.getElementById('statusMsg');
+
+async function redirectToSpotifyAuth(){
+  const verifier = generateRandomString(64);
+  const challenge = base64UrlEncode(await sha256(verifier));
+  localStorage.setItem('np_verifier', verifier);
+
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    code_challenge_method: 'S256',
+    code_challenge: challenge
+  });
+  window.location = `https://accounts.spotify.com/authorize?${params.toString()}`;
+}
+
+async function exchangeCodeForToken(code){
+  const verifier = localStorage.getItem('np_verifier');
+  const body = new URLSearchParams({
+    client_id: CLIENT_ID,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: verifier
+  });
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  if (!res.ok){ throw new Error('Token exchange failed: ' + (await res.text())); }
+  const data = await res.json();
+  localStorage.setItem('np_access_token', data.access_token);
+  localStorage.setItem('np_refresh_token', data.refresh_token);
+  localStorage.setItem('np_expires_at', Date.now() + data.expires_in*1000);
+  return data.access_token;
+}
+
+async function refreshAccessToken(){
+  const refresh_token = localStorage.getItem('np_refresh_token');
+  if (!refresh_token) return null;
+  const body = new URLSearchParams({
+    client_id: CLIENT_ID,
+    grant_type: 'refresh_token',
+    refresh_token
+  });
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  localStorage.setItem('np_access_token', data.access_token);
+  localStorage.setItem('np_expires_at', Date.now() + data.expires_in*1000);
+  if (data.refresh_token) localStorage.setItem('np_refresh_token', data.refresh_token);
+  return data.access_token;
+}
+
+async function getValidToken(){
+  const expiresAt = Number(localStorage.getItem('np_expires_at') || 0);
+  if (Date.now() > expiresAt - 60000){
+    return await refreshAccessToken();
+  }
+  return localStorage.getItem('np_access_token');
+}
+
+/* ========= Boot sequence ========= */
+document.getElementById('connectBtn').addEventListener('click', redirectToSpotifyAuth);
+
+async function boot(){
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+
+  if (error){
+    statusMsg.textContent = 'Connection was cancelled or denied.';
+    statusMsg.classList.add('error');
+    return;
+  }
+
+  if (code){
+    statusMsg.textContent = 'Connecting…';
+    try {
+      await exchangeCodeForToken(code);
+      window.history.replaceState({}, document.title, REDIRECT_URI);
+      showPlayer();
+    } catch(e){
+      statusMsg.textContent = 'Could not connect. Check your Client ID and Redirect URI match exactly.';
+      statusMsg.classList.add('error');
+      console.error(e);
+    }
+    return;
+  }
+
+  const existingToken = await getValidToken();
+  if (existingToken){ showPlayer(); }
+}
+
+async function showPlayer(){
+  document.getElementById('connectScreen').style.display = 'none';
+  document.getElementById('playerScreen').classList.add('visible');
+  document.getElementById('userBlock').style.display = 'flex';
+
+  const token = await getValidToken();
+  try {
+    const res = await fetch('https://api.spotify.com/v1/me', { headers:{ Authorization:`Bearer ${token}` } });
+    const me = await res.json();
+    document.getElementById('userName').textContent = me.display_name || me.id;
+  } catch(e){ console.error(e); }
+
+  initPlayer();
+}
+
+/* ========= Web Playback SDK ========= */
+let player, deviceId;
+
+window.onSpotifyWebPlaybackSDKReady = () => {
+  // SDK is loaded; actual player is created in initPlayer() once we're authenticated
+};
+
+async function initPlayer(){
+  const token = await getValidToken();
+
+  player = new Spotify.Player({
+    name: 'Nightpress Web Player',
+    getOAuthToken: cb => { getValidToken().then(cb); },
+    volume: 0.7
+  });
+
+  player.addListener('ready', ({ device_id }) => {
+    deviceId = device_id;
+    console.log('Nightpress ready, device id:', device_id);
+  });
+
+  player.addListener('player_state_changed', state => {
+    if (!state) return;
+    const track = state.track_window.current_track;
+    document.getElementById('trackTitle').textContent = track.name;
+    document.getElementById('trackArtist').textContent = track.artists.map(a=>a.name).join(', ');
+    document.getElementById('art').style.backgroundImage = `url(${track.album.images[0]?.url})`;
+    document.getElementById('totalTime').textContent = fmt(state.duration/1000);
+    document.getElementById('curTime').textContent = fmt(state.position/1000);
+    document.getElementById('barFill').style.width = (state.position/state.duration*100) + '%';
+
+    const playIcon = document.getElementById('playIcon');
+    playIcon.innerHTML = !state.paused
+      ? '<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+  });
+
+  player.addListener('initialization_error', ({message}) => console.error(message));
+  player.addListener('authentication_error', ({message}) => console.error(message));
+  player.addListener('account_error', ({message}) => { statusMsg.textContent = 'Spotify Premium is required for playback.'; console.error(message); });
+
+  await player.connect();
+
+  document.getElementById('playBtn').addEventListener('click', () => player.togglePlay());
+  document.getElementById('nextBtn').addEventListener('click', () => player.nextTrack());
+  document.getElementById('prevBtn').addEventListener('click', () => player.previousTrack());
+
+  document.getElementById('bar').addEventListener('click', async (e) => {
+    const state = await player.getCurrentState();
+    if (!state) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX-rect.left)/rect.width;
+    player.seek(pct * state.duration);
+  });
+}
+
+function fmt(s){
+  const m = Math.floor(s/60);
+  const sec = String(Math.floor(s%60)).padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+boot();
+</script>
+
+</body>
+</html>
